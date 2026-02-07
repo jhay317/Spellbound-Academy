@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spellbound Academy</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@700;900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Particles Background -->
+    <div id="particles-js"></div>
+
+    <div id="app">
+
+        <!-- Main Menu Screen -->
+        <div id="screen-menu" class="screen active">
+            <h1 class="game-title">Spellbound<br>Academy</h1>
+
+            <div class="glass-panel" style="width: 100%; max-width: 600px;">
+                <h2 style="text-align: center; margin-bottom: 2rem;">Welcome, Wizard!</h2>
+
+                <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                    <input type="text" id="player-name" placeholder="Enter Your Name"
+                        style="padding: 1rem; font-size: 1.5rem; border-radius: 10px; border: 2px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; text-align: center; font-family: var(--font-heading);">
+                </div>
+
+                <h3 style="text-align: center; margin-bottom: 1rem; color: var(--text-muted);">Choose Difficulty</h3>
+                <div class="difficulty-grid">
+                    <div class="difficulty-card glass-panel" onclick="game.startGame('common')">
+                        <h3>Common</h3>
+                        <p>Most Used Words</p>
+                    </div>
+                    <div class="difficulty-card glass-panel" onclick="game.startGame(3)">
+                        <h3>Novice</h3>
+                        <p>Grade 3</p>
+                    </div>
+                    <div class="difficulty-card glass-panel" onclick="game.startGame(4)">
+                        <h3>Apprentice</h3>
+                        <p>Grade 4</p>
+                    </div>
+                    <div class="difficulty-card glass-panel" onclick="game.startGame(5)">
+                        <h3>Master</h3>
+                        <p>Grade 5</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="btn" onclick="game.showLeaderboard()"
+                    style="background: rgba(255, 215, 0, 0.2); border: 1px solid gold;">
+                    🏆 Hall of Fame
+                </button>
+            </div>
+        </div>
+
+        <!-- Level Selection Screen -->
+        <div id="screen-levels" class="screen">
+            <h1 class="game-title" style="font-size: 2.5rem;">Select Level</h1>
+            <div class="glass-panel"
+                style="width: 100%; max-width: 800px; height: 70vh; display: flex; flex-direction: column;">
+                <h2 id="level-grade-title"
+                    style="text-align: center; margin-bottom: 1rem; color: var(--accent-secondary);">
+                    Grade Title</h2>
+
+                <div id="levels-grid" class="levels-grid"
+                    style="overflow-y: auto; flex-grow: 1; padding: 1rem; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+                    <!-- Level buttons go here -->
+                </div>
+
+                <div style="text-align: center; margin-top: 1rem;">
+                    <button class="btn" onclick="game.switchScreen('menu')"
+                        style="padding: 0.5rem 2rem; font-size: 1rem;">
+                        Back
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Leaderboard Screen -->
+        <div id="screen-leaderboard" class="screen">
+            <div class="glass-panel" style="width: 100%; max-width: 600px; text-align: center;">
+                <h2 style="font-size: 2.5rem; margin-bottom: 2rem;">🏆 Legends</h2>
+                <div id="leaderboard-full-list"
+                    style="max-height: 400px; overflow-y: auto; text-align: left; margin-bottom: 2rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                    <!-- Items go here -->
+                </div>
+                <button class="btn" onclick="game.switchScreen('menu')">Back to Academy</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="screen-game" class="screen">
+            <div class="stats-bar glass-panel">
+                <span id="score-display">Mana: 0</span>
+                <span id="streak-display">Combo: 0</span>
+            </div>
+
+            <!-- Mastery Progress -->
+            <div id="mastery-container" style="width: 100%; max-width: 600px; margin-top: 1rem;">
+                <div
+                    style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                    <span>Mastery</span>
+                    <span id="progress-text">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="glass-panel"
+                style="display: flex; flex-direction: column; align-items: center; gap: 2rem; position: relative;">
+
+                <!-- The "Monster" or Prompt -->
+                <div style="font-size: 6rem; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));">
+                    🧙‍♂️ ✨
+                </div>
+
+                <!-- Word Display (Hidden/Blanks) -->
+                <div id="word-target" class="word-target"></div>
+
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <button id="btn-speak" class="btn"
+                        style="padding: 0.5rem 1rem; font-size: 1rem; border-radius: 10px;">
+                        🔊 Hear Spell
+                    </button>
+                    <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Type the word to cast
+                        it!</p>
+                </div>
+
+                <!-- Input Slots -->
+                <div id="input-container" class="input-area">
+                    <!-- Slots generated by JS -->
+                </div>
+
+            </div>
+
+            <button class="btn" onclick="game.quitGame()"
+                style="background: transparent; border: 1px solid rgba(255,255,255,0.2); font-size: 1rem; margin-top: 2rem;">
+                Retreat to Menu
+            </button>
+        </div>
+
+        <!-- End Screen -->
+        <div id="screen-end" class="screen">
+            <div class="glass-panel" style="text-align: center; max-width: 600px;">
+                <h2 style="font-size: 3rem; margin-bottom: 1rem;">Training Complete!</h2>
+                <p id="final-score" style="font-size: 2rem; color: hsl(var(--accent-secondary)); margin-bottom: 2rem;">
+                    Final Mana: 0</p>
+
+                <h3 style="margin-bottom: 1rem;">🏆 Hall of Fame</h3>
+                <div id="leaderboard-list"
+                    style="max-height: 200px; overflow-y: auto; text-align: left; margin-bottom: 2rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px;">
+                    <!-- Leaderboard items -->
+                </div>
+
+                <button class="btn" onclick="game.quitGame()">Return to Menu</button>
+            </div>
+        </div>
+
+        <div id="feedback-message">✨ Excellent!</div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="particles.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

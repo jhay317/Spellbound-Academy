@@ -1,0 +1,366 @@
+:root {
+    /* Magical Color Palette HSL */
+    --bg-deep: 240, 40%, 10%;
+    --bg-panel: 240, 30%, 15%;
+    --accent-primary: 270, 80%, 65%;
+    /* Purple */
+    --accent-secondary: 180, 70%, 50%;
+    /* Cyan/Teal */
+    --accent-success: 140, 70%, 50%;
+    --accent-error: 0, 70%, 60%;
+    --text-main: 0, 0%, 95%;
+    --text-muted: 240, 20%, 70%;
+
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: hsl(var(--bg-deep));
+    color: hsl(var(--text-main));
+    height: 100vh;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 10%, hsl(260, 40%, 20%), hsl(var(--bg-deep)));
+    position: relative;
+    user-select: none;
+}
+
+/* Background Particles Container */
+#particles-js {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    padding: 2rem;
+    position: relative;
+    z-index: 10;
+}
+
+/* Glassmorphism Card Utility */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--glass-shadow);
+    padding: 2rem;
+}
+
+/* Main Menu */
+.screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    animation: fadeIn 0.5s ease;
+    width: 100%;
+    max-width: 800px;
+}
+
+.screen.active {
+    display: flex;
+}
+
+h1.game-title {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px hsla(var(--accent-primary), 0.5);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+h2 {
+    font-family: var(--font-heading);
+    color: hsl(var(--text-main));
+}
+
+/* Buttons */
+.btn {
+    background: linear-gradient(135deg, hsla(var(--accent-primary), 0.8), hsla(var(--accent-primary), 0.4));
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 1rem 3rem;
+    font-size: 1.5rem;
+    font-family: var(--font-heading);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px hsla(var(--accent-primary), 0.3);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px hsla(var(--accent-primary), 0.5);
+    background: linear-gradient(135deg, hsla(var(--accent-primary), 1), hsla(var(--accent-primary), 0.6));
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* Difficulty Selection */
+.difficulty-grid {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.difficulty-card {
+    cursor: pointer;
+    text-align: center;
+    width: 200px;
+    transition: transform 0.3s;
+}
+
+.difficulty-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.difficulty-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: hsl(var(--accent-secondary));
+}
+
+/* Game Interface */
+.word-display {
+    text-align: center;
+    margin: 2rem 0;
+    min-height: 100px;
+}
+
+.word-target {
+    font-size: 3rem;
+    font-family: monospace;
+    letter-spacing: 0.5rem;
+    filter: blur(10px);
+    /* Initially hidden/blurred for "spell the spoken word" mode, or clear for "copy" mode */
+    transition: filter 0.5s;
+    display: none;
+    /* Hide by default for "Listen and Spell" mode */
+}
+
+/* Input Display */
+.input-area {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.letter-slot {
+    width: 60px;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--glass-border);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    font-family: var(--font-heading);
+    color: white;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.letter-slot.filled {
+    border-color: hsl(var(--accent-secondary));
+    box-shadow: 0 0 15px hsla(var(--accent-secondary), 0.4);
+    background: hsla(var(--accent-secondary), 0.1);
+}
+
+.letter-slot.correct {
+    border-color: hsl(var(--accent-success));
+    color: hsl(var(--accent-success));
+    background: hsla(var(--accent-success), 0.1);
+    animation: bounce 0.5s;
+}
+
+.letter-slot.wrong {
+    border-color: hsl(var(--accent-error));
+    color: hsl(var(--accent-error));
+    background: hsla(var(--accent-error), 0.1);
+    animation: shake 0.4s;
+}
+
+/* Stats Header */
+.stats-bar {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: auto;
+    /* Push to top */
+    padding: 1rem;
+    font-size: 1.2rem;
+    color: hsl(var(--accent-secondary));
+    font-family: var(--font-heading);
+}
+
+/* Feedback Overlay */
+#feedback-message {
+    position: absolute;
+    top: 30%;
+    font-size: 4rem;
+    font-family: var(--font-heading);
+    text-shadow: 0 0 20px black;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s;
+}
+
+#feedback-message.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Progress Bar */
+.progress-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, hsl(var(--accent-secondary)), hsl(var(--accent-primary)));
+    transition: width 0.5s ease;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-10px);
+    }
+
+    75% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+/* Utility */
+.hidden {
+    display: none !important;
+}
+
+/* Level Selection */
+.levels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.level-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+    color: white;
+    font-family: var(--font-heading);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.2rem;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+.level-btn:hover:not(:disabled) {
+    background: hsla(var(--accent-secondary), 0.2);
+    border-color: hsl(var(--accent-secondary));
+    transform: translateY(-2px);
+}
+
+.level-btn.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.level-btn.completed {
+    border-color: hsl(var(--accent-success));
+    background: hsla(var(--accent-success), 0.1);
+}
+
+.level-btn.completed::after {
+    content: '★';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.8rem;
+    color: gold;
+}
+
+.level-info {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
