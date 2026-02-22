@@ -18,8 +18,7 @@ class Game {
         };
 
         this.wordList = [];
-        this.synth = window.speechSynthesis;
-        this.voice = null;
+        this.audio = new Audio();
 
         this.elements = {
             screens: {
@@ -53,12 +52,6 @@ class Game {
      * Initialize the game: load voices, load words, and bind events.
      */
     async init() {
-        // Initialize Voices
-        this.loadVoices();
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = () => this.loadVoices();
-        }
-
         // Load words
         try {
             const response = await fetch('words.json');
@@ -75,17 +68,7 @@ class Game {
         this.elements.speakBtn.addEventListener('click', () => this.speakWord());
     }
 
-    loadVoices() {
-        const voices = this.synth.getVoices();
-        // Priority: Google US -> Microsoft Zira -> Any English -> First available
-        this.voice = voices.find(v => v.name.includes('Google US English')) ||
-            voices.find(v => v.name.includes('Microsoft Zira')) ||
-            voices.find(v => v.lang.startsWith('en-US')) ||
-            voices.find(v => v.lang.startsWith('en')) ||
-            voices[0];
-
-        console.log("Voice selected:", this.voice ? this.voice.name : "Default");
-    }
+    // loadVoices removed - using server-side neural voices now
 
     /**
      * Start the flow: Select Grade -> Show Levels
@@ -170,6 +153,21 @@ class Game {
 
         this.switchScreen('game');
         this.nextWord();
+
+        // Proactive background pre-caching for the whole level
+        this.precacheLevelWords(this.wordList);
+    }
+
+    async precacheLevelWords(words) {
+        try {
+            await fetch('/api/precache_words', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ words: words })
+            });
+        } catch (e) {
+            console.warn("Pre-caching failed (background process)", e);
+        }
     }
 
     switchScreen(screenName) {
@@ -191,6 +189,13 @@ class Game {
 
         // Auto-speak the word after a slight delay
         setTimeout(() => this.speakWord(), 500);
+
+        // Pre-fetch the NEXT word in the list to trigger server generation early
+        if (this.wordList.length > 0) {
+            const nextCandidate = this.wordList[0];
+            // Just hit the endpoint to trigger cache; don't need the response
+            fetch(`/api/speak?word=${encodeURIComponent(nextCandidate)}`).catch(() => { });
+        }
 
         // Debug: Log the word
         console.log("Current spell:", this.state.currentWord);
@@ -312,29 +317,29 @@ class Game {
         this.showFeedback("Try Again!");
 
         // Diction help: Re-speak slower on fail
-        const utterThis = new SpeechSynthesisUtterance(this.state.currentWord);
-        if (this.voice) utterThis.voice = this.voice;
-        utterThis.rate = 0.6;
-        this.synth.speak(utterThis);
+        this.speakWord(this.state.currentWord, "-20%");
     }
 
-    speakWord() {
-        if (this.synth.speaking) {
-            this.synth.cancel();
-        }
+    /**
+     * Speak a word using the server-side TTS endpoint.
+     * @param {string} word - The word to speak
+     * @param {string} rate - Speed adjustment (e.g. "+0%", "-20%")
+     */
+    speakWord(word = this.state.currentWord, rate = "+0%") {
+        if (!word) return;
 
-        const utterThis = new SpeechSynthesisUtterance(this.state.currentWord);
+        // Construct the API URL
+        const url = `/api/speak?word=${encodeURIComponent(word)}&rate=${encodeURIComponent(rate)}`;
 
-        if (this.voice) {
-            utterThis.voice = this.voice;
-        }
+        // Stop any current playback
+        this.audio.pause();
+        this.audio.src = url;
 
-        // Improved settings for clarity
-        utterThis.rate = 0.9;  // Slightly faster than 0.8 but still clear
-        utterThis.pitch = 1.0; // Natural pitch is usually best for clarity
-        utterThis.volume = 1.0;
-
-        this.synth.speak(utterThis);
+        this.audio.play().catch(e => {
+            console.error("Audio playback failed:", e);
+            // Fallback to browser TTS if server fails?
+            // For now, just log it.
+        });
     }
 
     showFeedback(text) {

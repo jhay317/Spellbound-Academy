@@ -1,8 +1,12 @@
 import http.server
 import socketserver
 import webbrowser
+import threading
 import os
 import json
+import asyncio
+import edge_tts
+import urllib.parse
 from datetime import datetime
 
 """
@@ -16,6 +20,10 @@ PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 SCORES_FILE = os.path.join(DIRECTORY, "scores.json")
 USER_PROGRESS_FILE = os.path.join(DIRECTORY, "user_progress.json")
+SOUNDS_DIR = os.path.join(DIRECTORY, "sounds")
+
+if not os.path.exists(SOUNDS_DIR):
+    os.makedirs(SOUNDS_DIR)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     """
@@ -26,6 +34,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     - GET /api/user_progress: Retrieve persistent progress for a user
     - POST /api/score: Save a new score
     - POST /api/update_word_stats: Update mastery stats for specific words
+    - POST /api/precache_words: Generate audio for a list of words in the background
     - Static file serving for the game assets
     """
 
@@ -51,7 +60,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 for p in params:
                     if p.startswith('name='):
                         name = p.split('=')[1]
-                        import urllib.parse
                         name = urllib.parse.unquote(name)
                         break
             
@@ -70,6 +78,53 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         pass
             
             self.wfile.write(json.dumps(progress).encode())
+
+        elif self.path.startswith('/api/speak'):
+            # Parse query parameters
+            query = self.path.split('?')
+            word = ""
+            rate = "+0%"  # Default rate for edge-tts
+            
+            if len(query) > 1:
+                params = query[1].split('&')
+                for p in params:
+                    if p.startswith('word='):
+                        word = urllib.parse.unquote(p.split('=')[1]).lower().strip()
+                    elif p.startswith('rate='):
+                        # Rate expected in edge-tts format like '+10%' or '-10%'
+                        rate = urllib.parse.unquote(p.split('=')[1])
+            
+            if not word:
+                self.send_error(400, "Missing word parameter")
+                return
+
+            # Sanitize filename
+            safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
+            # edge-tts rate might have special characters, sanitize for filename
+            safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
+            filename = f"{safe_word}_{safe_rate}.mp3"
+            filepath = os.path.join(SOUNDS_DIR, filename)
+
+            if not os.path.exists(filepath):
+                # Generate audio if not cached
+                print(f"Generating audio for: '{word}' with rate '{rate}'")
+                try:
+                    # Run the async tts generation
+                    voice = "en-US-GuyNeural"
+                    communicate = edge_tts.Communicate(word, voice, rate=rate)
+                    asyncio.run(communicate.save(filepath))
+                except Exception as e:
+                    print(f"TTS Error: {e}")
+                    self.send_error(500, f"TTS Generation Failed: {e}")
+                    return
+
+            # Serve the file
+            self.send_response(200)
+            self.send_header('Content-type', 'audio/mpeg')
+            self.send_header('Content-Length', os.path.getsize(filepath))
+            self.end_headers()
+            with open(filepath, 'rb') as f:
+                self.wfile.write(f.read())
 
         else:
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
@@ -158,22 +213,62 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_response(500)
                 self.wfile.write(str(e).encode())
+        elif self.path == '/api/precache_words':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                words = data.get('words', [])
+                rate = data.get('rate', '+0%')
+                
+                def generate_batch():
+                    voice = "en-US-GuyNeural"
+                    for word in words:
+                        word = word.lower().strip()
+                        safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
+                        safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
+                        filename = f"{safe_word}_{safe_rate}.mp3"
+                        filepath = os.path.join(SOUNDS_DIR, filename)
+
+                        if not os.path.exists(filepath):
+                            print(f"Background generating: '{word}'")
+                            try:
+                                communicate = edge_tts.Communicate(word, voice, rate=rate)
+                                asyncio.run(communicate.save(filepath))
+                            except Exception as e:
+                                print(f"Background TTS Error for '{word}': {e}")
+
+                # Run generation in a separate thread so API returns immediately
+                threading.Thread(target=generate_batch).start()
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "started", "count": len(words)}).encode())
+
+            except Exception as e:
+                self.send_response(500)
+                self.wfile.write(str(e).encode())
         else:
             self.send_error(404)
 
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
 def run_server():
     """
-    Start the HTTP server on localhost:8000.
+    Start the multi-threaded HTTP server on localhost:8000.
     
     Change working directory to the script's location, opens the default
     web browser, and serves forever until interrupted.
     """
 
     os.chdir(DIRECTORY)
-    socketserver.TCPServer.allow_reuse_address = True
+    ThreadedHTTPServer.allow_reuse_address = True
     
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Server started at http://localhost:{PORT}")
+    with ThreadedHTTPServer(("", PORT), Handler) as httpd:
+        print(f"Multi-threaded Server started at http://localhost:{PORT}")
         print("Opening browser...")
         webbrowser.open(f"http://localhost:{PORT}")
         try:

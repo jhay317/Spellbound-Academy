@@ -28,6 +28,7 @@ env/
 ENV/
 .env
 .venv/
+env-3-12/
 
 # Javascript / Node
 node_modules/
@@ -55,3 +56,5 @@ $RECYCLE.BIN/
 
 # Project specific
 user_progress.json
+# Local data
+scores.json
