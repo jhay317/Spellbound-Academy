@@ -322,6 +322,7 @@ class Game {
 
     /**
      * Speak a word using the server-side TTS endpoint.
+     * Falls back to browser-built-in TTS if the server fails.
      * @param {string} word - The word to speak
      * @param {string} rate - Speed adjustment (e.g. "+0%", "-20%")
      */
@@ -331,15 +332,51 @@ class Game {
         // Construct the API URL
         const url = `/api/speak?word=${encodeURIComponent(word)}&rate=${encodeURIComponent(rate)}`;
 
+        console.log(`[TTS] Requesting word: "${word}" (Rate: ${rate})`);
+
         // Stop any current playback
         this.audio.pause();
         this.audio.src = url;
 
         this.audio.play().catch(e => {
-            console.error("Audio playback failed:", e);
-            // Fallback to browser TTS if server fails?
-            // For now, just log it.
+            console.warn("[TTS] Server audio failed, falling back to browser voice:", e);
+            this.speakWithBrowserFallback(word, rate);
         });
+    }
+
+    /**
+     * Fallback mechanism using the browser's built-in SpeechSynthesis API.
+     */
+    speakWithBrowserFallback(word, rateString) {
+        if (!window.speechSynthesis) {
+            console.error("[TTS] Browser does not support SpeechSynthesis.");
+            return;
+        }
+
+        // Cancel existing speech
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(word);
+
+        // Convert edge-tts rate (+0%, -20%) to speech api rate (0.1 to 10)
+        let rate = 1.0;
+        try {
+            const percent = parseInt(rateString.replace('%', ''));
+            rate = 1.0 + (percent / 100);
+            if (rate < 0.1) rate = 0.1;
+            if (rate > 2.0) rate = 2.0; // Keep it reasonable
+        } catch (e) { }
+
+        utterance.rate = rate;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Choose a female/pleasant voice if possible
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || voices[0];
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        window.speechSynthesis.speak(utterance);
     }
 
     showFeedback(text) {

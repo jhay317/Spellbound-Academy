@@ -4,14 +4,15 @@ Spellbound Academy is an interactive, voice-enabled spelling game designed to ma
 
 ## Features
 
--   **Interactive Gameplay**: Type the spoken words to cast spells.
--   **Neural Voice Integration**: Uses `edge-tts` for high-quality, natural neural voices.
+-   **Interactive Gameplay**: Type the spoken words to cast spells with smooth animations.
+-   **Neural Voice Integration**: Uses `edge-tts` for high-quality, natural neural voices with adjustable rates.
+-   **TTS Fallback Implementation**: Automatically falls back to browser-built-in speech synthesis if the server TTS endpoint is unavailable.
 -   **Smart Word Selection**: Prioritizes problem words and introduces new words using a weighted selection algorithm.
--   **Progression System**: Tracks correct/incorrect answers and prioritizes problem words across levels.
--   **Smart Difficulty**: "Common" words and grade-level specific lists.
--   **Multi-threaded Server**: Handles audio pre-caching in the background for zero-latency gameplay.
--   **Leaderboard**: Tracks top scores locally.
--   **Visual Feedback**: Animations for correct/incorrect answers, letter-by-letter highlighting, and progress tracking.
+-   **Progression System**: Tracks correct/incorrect answers and prioritizes problem words across levels with persistent storage in `user_progress.json`.
+-   **Expanded Word Database**: Includes over 1000 words per grade (for grades 3, 4, and 5), organized into difficulty levels.
+-   **Multi-threaded Server**: Handles audio pre-caching in the background for zero-latency gameplay, now with explicit background worker logging.
+-   **Dynamic Leaderboard**: Tracks top scores locally with a visual rank display.
+-   **Rich Visual Feedback**: Glassmorphism UI, particle effects, and letter-by-letter highlighting for incorrect answers.
 
 ## Setup & Usage
 

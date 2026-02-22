@@ -38,6 +38,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     - Static file serving for the game assets
     """
 
+    def log_message(self, format, *args):
+        """Custom logger to provide more visibility in the console."""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] {self.address_string()} - {format % args}")
+
     def do_GET(self):
         """Handle GET requests for static files and API endpoints."""
 
@@ -91,40 +96,66 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if p.startswith('word='):
                         word = urllib.parse.unquote(p.split('=')[1]).lower().strip()
                     elif p.startswith('rate='):
-                        # Rate expected in edge-tts format like '+10%' or '-10%'
                         rate = urllib.parse.unquote(p.split('=')[1])
             
             if not word:
+                print(f"[ERROR] /api/speak: Missing word parameter in request: {self.path}")
                 self.send_error(400, "Missing word parameter")
                 return
 
             # Sanitize filename
             safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
-            # edge-tts rate might have special characters, sanitize for filename
             safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
             filename = f"{safe_word}_{safe_rate}.mp3"
             filepath = os.path.join(SOUNDS_DIR, filename)
 
-            if not os.path.exists(filepath):
-                # Generate audio if not cached
-                print(f"Generating audio for: '{word}' with rate '{rate}'")
+            # File validation: Check if exists AND is not empty
+            file_exists = os.path.exists(filepath)
+            file_is_empty = file_exists and os.path.getsize(filepath) == 0
+
+            if not file_exists or file_is_empty:
+                if file_is_empty:
+                    print(f"[REGEN] Empty file detected: '{filename}'. Deleting and regenerating...")
+                    try:
+                        os.remove(filepath)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to delete empty file {filepath}: {e}")
+
+                # Generate audio
+                print(f"[TTS] Generating neural audio for: '{word}' (Rate: {rate})")
                 try:
                     # Run the async tts generation
-                    voice = "en-US-GuyNeural"
+                    voice = "en-US-AriaNeural"
                     communicate = edge_tts.Communicate(word, voice, rate=rate)
                     asyncio.run(communicate.save(filepath))
+                    
+                    # Post-generation check
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                        raise Exception("Generated file is missing or empty after saving.")
+                    
+                    print(f"[SUCCESS] Generated: {filename} ({os.path.getsize(filepath)} bytes)")
                 except Exception as e:
-                    print(f"TTS Error: {e}")
+                    print(f"[ERROR] TTS Generation Failed for '{word}': {e}")
                     self.send_error(500, f"TTS Generation Failed: {e}")
                     return
+            else:
+                # Verbose logging for cached hits
+                # print(f"[CACHE] Serving: {filename}")
+                pass
 
             # Serve the file
-            self.send_response(200)
-            self.send_header('Content-type', 'audio/mpeg')
-            self.send_header('Content-Length', os.path.getsize(filepath))
-            self.end_headers()
-            with open(filepath, 'rb') as f:
-                self.wfile.write(f.read())
+            try:
+                size = os.path.getsize(filepath)
+                self.send_response(200)
+                self.send_header('Content-type', 'audio/mpeg')
+                self.send_header('Content-Length', size)
+                self.end_headers()
+                with open(filepath, 'rb') as f:
+                    self.wfile.write(f.read())
+            except Exception as e:
+                print(f"[ERROR] Failed to serve {filepath}: {e}")
+                if not self.wfile.closed:
+                    self.send_error(500, f"Error serving file: {e}")
 
         else:
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
@@ -223,7 +254,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 rate = data.get('rate', '+0%')
                 
                 def generate_batch():
-                    voice = "en-US-GuyNeural"
+                    voice = "en-US-AriaNeural"
                     for word in words:
                         word = word.lower().strip()
                         safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
@@ -231,16 +262,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         filename = f"{safe_word}_{safe_rate}.mp3"
                         filepath = os.path.join(SOUNDS_DIR, filename)
 
-                        if not os.path.exists(filepath):
-                            print(f"Background generating: '{word}'")
+                        # Check if exists AND is valid
+                        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                            if os.path.exists(filepath):
+                                os.remove(filepath)
+                                print(f"[REGEN] Batch deleting empty file: '{filename}'")
+
+                            print(f"[BATCH] Generating: '{word}'")
                             try:
                                 communicate = edge_tts.Communicate(word, voice, rate=rate)
                                 asyncio.run(communicate.save(filepath))
+                                if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                                    print(f"[BATCH] SUCCESS: {filename}")
                             except Exception as e:
-                                print(f"Background TTS Error for '{word}': {e}")
+                                print(f"[BATCH ERROR] TTS Error for '{word}': {e}")
 
                 # Run generation in a separate thread so API returns immediately
-                threading.Thread(target=generate_batch).start()
+                print(f"[API] Starting background pre-cache for {len(words)} words.")
+                threading.Thread(target=generate_batch, daemon=True).start()
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
