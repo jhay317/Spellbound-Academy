@@ -58,3 +58,10 @@ $RECYCLE.BIN/
 user_progress.json
 # Local data
 scores.json
+sounds/
+env-3-14/
+env-*/
+*.tmp
+
+# Audio files
+sounds/*

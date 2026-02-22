@@ -16,7 +16,7 @@ A simple HTTP server handling API requests for the spelling game.
 It manages score saving/retrieval and user progress tracking via JSON files.
 """
 
-PORT = 8000
+PORT = int(os.environ.get("PORT", 8000))
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 SCORES_FILE = os.path.join(DIRECTORY, "scores.json")
 USER_PROGRESS_FILE = os.path.join(DIRECTORY, "user_progress.json")
@@ -24,6 +24,47 @@ SOUNDS_DIR = os.path.join(DIRECTORY, "sounds")
 
 if not os.path.exists(SOUNDS_DIR):
     os.makedirs(SOUNDS_DIR)
+
+def robust_generate_tts(word, filepath, rate, voice="en-US-AriaNeural", retries=3):
+    """
+    Generate TTS audio with multiple retry attempts and exponential backoff.
+    Returns (success, error_message).
+    """
+    tmp_filepath = filepath + ".tmp"
+
+    async def _internal_generate():
+        last_error = None
+        for attempt in range(retries):
+            try:
+                communicate = edge_tts.Communicate(word, voice, rate=rate)
+                await communicate.save(tmp_filepath)
+                
+                # Verify file integrity
+                if os.path.exists(tmp_filepath) and os.path.getsize(tmp_filepath) > 0:
+                    os.replace(tmp_filepath, filepath)
+                    return True, None
+                
+                last_error = "Generated file is missing or empty."
+            except Exception as e:
+                last_error = str(e)
+            
+            if attempt < retries - 1:
+                wait_time = (2 ** attempt)
+                # print(f"[RETRY] '{word}' attempt {attempt+1} failed: {last_error}. Retrying in {wait_time}s...")
+                await asyncio.run_coroutine_threadsafe(asyncio.sleep(wait_time), asyncio.get_event_loop()) if False else await asyncio.sleep(wait_time)
+        
+        if os.path.exists(tmp_filepath):
+            try:
+                os.remove(tmp_filepath)
+            except Exception:
+                pass
+        return False, last_error
+
+    try:
+        # Since we're in a threaded environment, each call gets its own event loop via asyncio.run
+        return asyncio.run(_internal_generate())
+    except Exception as e:
+        return False, str(e)
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     """
@@ -123,21 +164,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
                 # Generate audio
                 print(f"[TTS] Generating neural audio for: '{word}' (Rate: {rate})")
-                try:
-                    # Run the async tts generation
-                    voice = "en-US-AriaNeural"
-                    communicate = edge_tts.Communicate(word, voice, rate=rate)
-                    asyncio.run(communicate.save(filepath))
-                    
-                    # Post-generation check
-                    if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-                        raise Exception("Generated file is missing or empty after saving.")
-                    
-                    print(f"[SUCCESS] Generated: {filename} ({os.path.getsize(filepath)} bytes)")
-                except Exception as e:
-                    print(f"[ERROR] TTS Generation Failed for '{word}': {e}")
-                    self.send_error(500, f"TTS Generation Failed: {e}")
+                success, error = robust_generate_tts(word, filepath, rate)
+                
+                if not success:
+                    print(f"[ERROR] TTS Generation Failed for '{word}': {error}")
+                    self.send_error(500, f"TTS Generation Failed: {error}")
                     return
+                
+                print(f"[SUCCESS] Generated: {filename} ({os.path.getsize(filepath)} bytes)")
             else:
                 # Verbose logging for cached hits
                 # print(f"[CACHE] Serving: {filename}")
@@ -253,32 +287,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 words = data.get('words', [])
                 rate = data.get('rate', '+0%')
                 
-                def generate_batch():
+                def process_word(word):
                     voice = "en-US-AriaNeural"
-                    for word in words:
-                        word = word.lower().strip()
-                        safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
-                        safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
-                        filename = f"{safe_word}_{safe_rate}.mp3"
-                        filepath = os.path.join(SOUNDS_DIR, filename)
+                    word = word.lower().strip()
+                    safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
+                    safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
+                    filename = f"{safe_word}_{safe_rate}.mp3"
+                    filepath = os.path.join(SOUNDS_DIR, filename)
 
-                        # Check if exists AND is valid
-                        if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-                            if os.path.exists(filepath):
-                                os.remove(filepath)
-                                print(f"[REGEN] Batch deleting empty file: '{filename}'")
-
-                            print(f"[BATCH] Generating: '{word}'")
+                    # Check if exists AND is valid
+                    if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                        if os.path.exists(filepath):
                             try:
-                                communicate = edge_tts.Communicate(word, voice, rate=rate)
-                                asyncio.run(communicate.save(filepath))
-                                if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-                                    print(f"[BATCH] SUCCESS: {filename}")
-                            except Exception as e:
-                                print(f"[BATCH ERROR] TTS Error for '{word}': {e}")
+                                os.remove(filepath)
+                            except Exception:
+                                pass
+                            print(f"[REGEN] Batch deleting empty file: '{filename}'")
+
+                        print(f"[BATCH] Generating: '{word}'")
+                        success, error = robust_generate_tts(word, filepath, rate, voice)
+                        
+                        if success:
+                            print(f"[BATCH] SUCCESS: {filename}")
+                        else:
+                            print(f"[BATCH ERROR] TTS Error for '{word}': {error}")
+                        
+                        # Very small delay just to prevent hitting all at the exact same ms
+                        import time
+                        time.sleep(0.1)
+
+                def generate_batch():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                        executor.map(process_word, words)
 
                 # Run generation in a separate thread so API returns immediately
-                print(f"[API] Starting background pre-cache for {len(words)} words.")
+                print(f"[API] Starting background pre-cache for {len(words)} words with 20 threads.")
                 threading.Thread(target=generate_batch, daemon=True).start()
 
                 self.send_response(200)
@@ -307,9 +351,13 @@ def run_server():
     ThreadedHTTPServer.allow_reuse_address = True
     
     with ThreadedHTTPServer(("", PORT), Handler) as httpd:
-        print(f"Multi-threaded Server started at http://localhost:{PORT}")
-        print("Opening browser...")
-        webbrowser.open(f"http://localhost:{PORT}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Multi-threaded Server started at http://localhost:{PORT}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Serving from: {DIRECTORY}")
+        
+        # Only open browser if not in a headless/deployment environment
+        if os.environ.get("OPEN_BROWSER", "true").lower() == "true":
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Opening browser...")
+            webbrowser.open(f"http://localhost:{PORT}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
