@@ -4,7 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spellbound Academy</title>
+    <title>Spellbound Academy - Voice Spelling Game</title>
+    <meta name="description" content="Spellbound Academy is an interactive, voice-enabled spelling game for school grades 3-5. Learn spelling by casting spells in wizard duels!">
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#b566ff">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,6 +42,22 @@
                         style="padding: 1rem; font-size: 1.5rem; border-radius: 10px; border: 2px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; text-align: center; font-family: var(--font-heading);">
                 </div>
 
+                <h3 style="text-align: center; margin-bottom: 1rem; color: var(--text-muted); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;">Choose Your Subclass</h3>
+                <div class="subclass-grid">
+                    <div class="subclass-card active" id="subclass-storm" onclick="game.selectSubclass('storm')">
+                        <span class="subclass-icon">⚡</span>
+                        <h4>Storm Wizard</h4>
+                    </div>
+                    <div class="subclass-card" id="subclass-fire" onclick="game.selectSubclass('fire')">
+                        <span class="subclass-icon">🔥</span>
+                        <h4>Fire Wizard</h4>
+                    </div>
+                    <div class="subclass-card" id="subclass-frost" onclick="game.selectSubclass('frost')">
+                        <span class="subclass-icon">❄️</span>
+                        <h4>Frost Wizard</h4>
+                    </div>
+                </div>
+
                 <h3 style="text-align: center; margin-bottom: 1rem; color: var(--text-muted);">Choose Difficulty</h3>
                 <div class="difficulty-grid">
                     <div class="difficulty-card glass-panel" onclick="game.startGame('common')">
@@ -55,10 +79,14 @@
                 </div>
             </div>
 
-            <div style="margin-top: 2rem; text-align: center;">
+            <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                 <button class="btn" onclick="game.showLeaderboard()"
-                    style="background: rgba(255, 215, 0, 0.2); border: 1px solid gold;">
+                    style="background: rgba(255, 215, 0, 0.2); border: 1px solid gold; padding: 0.8rem 2rem; font-size: 1.2rem; min-width: 200px;">
                     🏆 Hall of Fame
+                </button>
+                <button class="btn" onclick="game.openSettings()"
+                    style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--glass-border); padding: 0.8rem 2rem; font-size: 1.2rem; min-width: 200px;">
+                    ⚙️ Speech Setup
                 </button>
             </div>
         </div>
@@ -101,9 +129,10 @@
 
         <!-- Game Screen -->
         <div id="screen-game" class="screen">
-            <div class="stats-bar glass-panel">
+            <div class="stats-bar glass-panel" style="align-items: center; display: flex; justify-content: space-between;">
                 <span id="score-display">Mana: 0</span>
                 <span id="streak-display">Combo: 0</span>
+                <button class="btn-settings" onclick="game.openSettings()" title="Speech Settings" style="margin-left: auto;">⚙️</button>
             </div>
 
             <!-- Mastery Progress -->
@@ -119,23 +148,52 @@
             </div>
 
             <div class="glass-panel"
-                style="display: flex; flex-direction: column; align-items: center; gap: 2rem; position: relative;">
+                style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; position: relative; width: 100%; max-width: 650px;">
 
-                <!-- The "Monster" or Prompt -->
-                <div style="font-size: 6rem; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));">
-                    🧙‍♂️ ✨
+                <!-- Combat Arena -->
+                <div class="combat-arena">
+                    <!-- Wizard Side -->
+                    <div class="fighter wizard-side">
+                        <div class="character-avatar" id="wizard-avatar">🧙‍♂️⚡</div>
+                        <div class="character-name" id="wizard-name-display">Wizard</div>
+                        <div class="mana-shield-container">
+                            <div class="mana-shield-bar" id="wizard-shield" style="width: 100%;"></div>
+                        </div>
+                        <div class="mana-shield-text">Shield: 100%</div>
+                    </div>
+                    
+                    <!-- Spell Projectile Pathway -->
+                    <div class="projectile-lane" id="projectile-lane">
+                        <!-- Projectiles will be spawned here dynamically -->
+                    </div>
+
+                    <!-- Enemy Side -->
+                    <div class="fighter enemy-side">
+                        <div class="character-avatar" id="enemy-avatar">🦠</div>
+                        <div class="character-name" id="enemy-name">Wild Slime</div>
+                        <div class="hp-container">
+                            <div class="hp-fill" id="enemy-hp" style="width: 100%;"></div>
+                        </div>
+                        <div class="hp-text" id="enemy-hp-text">HP: 10/10</div>
+                    </div>
                 </div>
 
                 <!-- Word Display (Hidden/Blanks) -->
                 <div id="word-target" class="word-target"></div>
 
-                <div style="text-align: center; margin-bottom: 1rem;">
-                    <button id="btn-speak" class="btn"
-                        style="padding: 0.5rem 1rem; font-size: 1rem; border-radius: 10px;">
-                        🔊 Hear Spell
-                    </button>
-                    <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Type the word to cast
-                        it!</p>
+                <!-- Control Buttons (Speak & Clue Scroll) -->
+                <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="btn-speak" class="btn"
+                            style="padding: 0.5rem 1rem; font-size: 1rem; border-radius: 10px;">
+                            🔊 Hear Spell
+                        </button>
+                        <button id="btn-clue" class="btn" onclick="game.showClue()"
+                            style="padding: 0.5rem 1rem; font-size: 1rem; border-radius: 10px; background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(184, 134, 11, 0.1)); border: 1px solid rgba(212, 175, 55, 0.4); color: #ffd700; text-transform: none; letter-spacing: 0;">
+                            📜 Scroll Clue
+                        </button>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Type the word to cast it!</p>
                 </div>
 
                 <!-- Input Slots -->
@@ -143,6 +201,29 @@
                     <!-- Slots generated by JS -->
                 </div>
 
+                <!-- Wisdom Scroll Panel -->
+                <div id="wisdom-scroll" class="wisdom-scroll hidden">
+                    <div class="scroll-content">
+                        <span class="scroll-close" onclick="game.closeClue()">&times;</span>
+                        <div class="scroll-heading">📜 Scroll of Wisdom</div>
+                        <div id="clue-content" class="clue-body">
+                            Loading magical lore...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Virtual Keyboard Wrapper -->
+            <div class="keyboard-wrapper" style="width: 100%; max-width: 600px; margin-top: 0.5rem;">
+                <div style="display: flex; justify-content: center; margin-bottom: 0.5rem;">
+                    <button class="btn" onclick="game.toggleKeyboard()" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-muted); font-size: 0.8rem; padding: 0.4rem 1rem; border-radius: 8px; cursor: pointer; text-transform: none; letter-spacing: 0;">
+                        ⌨️ Toggle Virtual Keyboard
+                    </button>
+                </div>
+                <div id="virtual-keyboard" class="virtual-keyboard hidden">
+                    <!-- Key rows generated by JS dynamically -->
+                </div>
             </div>
 
             <button class="btn" onclick="game.quitGame()"
@@ -172,9 +253,59 @@
 
     </div>
 
+    <!-- Speech Settings Modal -->
+    <div id="settings-modal" class="settings-backdrop hidden">
+        <div class="settings-dialog">
+            <h2 class="settings-title">⚙️ Speech & Diction</h2>
+            
+            <!-- Voice Selection -->
+            <div class="settings-field">
+                <label for="settings-voice-select">Magical Voice Option</label>
+                <select id="settings-voice-select" class="settings-select" onchange="game.previewVoiceSelection()">
+                    <option value="en-US-AnaNeural">👦 Sweet (Ana) - Child Voice (Recommended for Clarity)</option>
+                    <option value="en-US-JennyNeural">👩 Friendly (Jenny) - Natural Female</option>
+                    <option value="en-US-EmmaNeural">👩 Warm (Emma) - Expressive Female</option>
+                    <option value="en-US-AriaNeural">👩 Professional (Aria) - Standard Female</option>
+                    <option value="en-US-GuyNeural">👨 Deep (Guy) - Natural Male</option>
+                    <option value="en-US-AndrewNeural">👨 Clear (Andrew) - Expressive Male</option>
+                    <option value="en-GB-SoniaNeural">👩 Royal (Sonia) - British Accent</option>
+                </select>
+            </div>
+
+            <!-- Speech Rate / Speed -->
+            <div class="settings-field">
+                <label for="settings-rate-slider">Chanting Speed</label>
+                <div class="settings-slider-container">
+                    <input type="range" id="settings-rate-slider" class="settings-slider" 
+                        min="-50" max="30" step="5" value="0" oninput="game.updateRateSliderLabel(this.value)">
+                    <span id="settings-rate-value" class="settings-slider-value">Normal Speed</span>
+                </div>
+            </div>
+
+            <div class="settings-help">
+                💡 <strong>Hearing Accessibility Tip:</strong> If audio is blocked or does not autoplay on a new word, click the <strong>🔊 Hear Spell</strong> button. Slowing the chanting speed can help make spelling sounds easier to distinguish.
+            </div>
+
+            <!-- Actions -->
+            <div class="settings-actions">
+                <button class="settings-btn settings-btn-test" onclick="game.testCurrentVoice()">🔊 Test Voice</button>
+                <button class="settings-btn settings-btn-primary" onclick="game.closeSettings(true)">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="particles.js"></script>
     <script src="game.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered successfully with scope:', reg.scope))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>

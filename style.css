@@ -17,6 +17,34 @@
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --projectile-glow: hsla(var(--accent-primary), 0.5);
+}
+
+/* Fire Wizard Subclass Variables */
+body[data-subclass="fire"] {
+    --accent-primary: 15, 90%, 55%; /* Bright Orange/Red */
+    --accent-secondary: 42, 95%, 50%; /* Gold/Yellow */
+    --bg-deep: 5, 45%, 8%;
+    --projectile-glow: rgba(255, 78, 80, 0.8);
+    background: radial-gradient(circle at 50% 10%, hsl(15, 45%, 15%), hsl(var(--bg-deep))) !important;
+}
+
+/* Frost Wizard Subclass Variables */
+body[data-subclass="frost"] {
+    --accent-primary: 195, 85%, 60%; /* Ice Blue */
+    --accent-secondary: 175, 75%, 50%; /* Teal/Cyan */
+    --bg-deep: 210, 50%, 8%;
+    --projectile-glow: rgba(0, 198, 255, 0.8);
+    background: radial-gradient(circle at 50% 10%, hsl(200, 45%, 15%), hsl(var(--bg-deep))) !important;
+}
+
+/* Storm Wizard Subclass Variables */
+body[data-subclass="storm"] {
+    --accent-primary: 275, 80%, 65%; /* Electric Purple */
+    --accent-secondary: 50, 100%, 55%; /* Lightning Gold */
+    --bg-deep: 260, 45%, 8%;
+    --projectile-glow: rgba(212, 175, 55, 0.8);
+    background: radial-gradient(circle at 50% 10%, hsl(270, 45%, 15%), hsl(var(--bg-deep))) !important;
 }
 
 * {
@@ -363,4 +391,465 @@ h2 {
     font-size: 0.8rem;
     color: var(--text-muted);
     margin-top: 0.2rem;
+}
+
+/* Subclass Cards */
+.subclass-grid {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.subclass-card {
+    flex: 1;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 0.8rem;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.subclass-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.subclass-card.active {
+    background: hsla(var(--accent-primary), 0.2);
+    border-color: hsl(var(--accent-primary));
+    box-shadow: 0 0 15px hsla(var(--accent-primary), 0.4);
+}
+
+.subclass-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
+.subclass-card h4 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: white;
+}
+
+/* Combat Arena */
+.combat-arena {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 550px;
+    margin: 1rem 0;
+    gap: 1.5rem;
+    position: relative;
+}
+
+.fighter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.character-avatar {
+    font-size: 4rem;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+    transition: all 0.3s ease;
+    animation: idle-float 3s ease-in-out infinite;
+}
+
+.enemy-side .character-avatar {
+    animation: idle-float-reverse 3.3s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes idle-float-reverse {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.character-name {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+    color: white;
+}
+
+/* Health and Mana Shield Bars */
+.hp-container, .mana-shield-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4e50, #f9d423);
+    transition: width 0.3s ease;
+}
+
+.mana-shield-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00c6ff, #0072ff);
+    transition: width 0.3s ease;
+}
+
+.hp-text, .mana-shield-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+/* Projectile Lane */
+.projectile-lane {
+    position: absolute;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    pointer-events: none;
+    z-index: 15;
+}
+
+.magic-projectile {
+    position: absolute;
+    font-size: 2rem;
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    filter: drop-shadow(0 0 10px var(--projectile-glow));
+}
+
+/* Virtual Keyboard */
+.virtual-keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.8rem;
+    border-radius: 15px;
+    border: 1px solid var(--glass-border);
+    max-height: 250px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+
+.virtual-keyboard.hidden {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    border: none;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.key-btn {
+    flex: 1;
+    max-width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: white;
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.15s;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.key-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.key-btn:active, .key-btn.active {
+    background: hsla(var(--accent-primary), 0.3);
+    border-color: hsl(var(--accent-primary));
+    box-shadow: 0 0 10px hsla(var(--accent-primary), 0.5);
+    transform: scale(0.95);
+}
+
+.key-btn.special-key {
+    max-width: 75px;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Wisdom Scroll */
+.wisdom-scroll {
+    width: 100%;
+    max-width: 500px;
+    background: linear-gradient(135deg, rgba(245, 235, 210, 0.98), rgba(220, 200, 160, 0.98));
+    border: 3px double #8b5a2b;
+    border-radius: 10px;
+    padding: 1rem;
+    color: #4a2e16;
+    font-family: 'Georgia', serif;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 0 40px rgba(139,90,43,0.2);
+    position: relative;
+    animation: roll-down 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin-top: 1rem;
+    text-align: left;
+}
+
+@keyframes roll-down {
+    from {
+        transform: scaleY(0);
+        opacity: 0;
+        transform-origin: top;
+    }
+    to {
+        transform: scaleY(1);
+        opacity: 1;
+        transform-origin: top;
+    }
+}
+
+.scroll-close {
+    position: absolute;
+    top: 5px;
+    right: 12px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    font-weight: bold;
+    color: #8b5a2b;
+    transition: color 0.2s;
+}
+
+.scroll-close:hover {
+    color: #b22222;
+}
+
+.scroll-heading {
+    font-size: 1.3rem;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(139,90,43,0.3);
+    padding-bottom: 0.3rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+.clue-body {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.clue-part {
+    font-style: italic;
+    color: #5c3a21;
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+/* Settings Modal overlay */
+.settings-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.25s ease;
+}
+
+.settings-dialog {
+    width: 90%;
+    max-width: 480px;
+    background: rgba(25, 20, 35, 0.95);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    padding: 2rem;
+    animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleUp {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.settings-title {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: hsl(var(--accent-secondary));
+    text-align: center;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 0.5rem;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-field label {
+    font-size: 0.95rem;
+    color: hsl(var(--text-muted));
+    font-weight: 600;
+}
+
+.settings-select {
+    padding: 0.8rem;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+
+.settings-select option {
+    background: #1a1a2e;
+    color: white;
+}
+
+.settings-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.settings-slider {
+    flex-grow: 1;
+    cursor: pointer;
+    accent-color: hsl(var(--accent-secondary));
+}
+
+.settings-slider-value {
+    min-width: 90px;
+    font-weight: bold;
+    text-align: right;
+    color: white;
+}
+
+.settings-help {
+    font-size: 0.85rem;
+    color: hsl(var(--text-muted));
+    line-height: 1.45;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    padding: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.settings-btn {
+    padding: 0.6rem 1.5rem;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.settings-btn-test {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.settings-btn-test:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.settings-btn-primary {
+    background: linear-gradient(135deg, hsla(var(--accent-secondary), 0.8), hsla(var(--accent-secondary), 0.4));
+    color: white;
+    font-weight: bold;
+}
+
+.settings-btn-primary:hover {
+    background: linear-gradient(135deg, hsla(var(--accent-secondary), 1), hsla(var(--accent-secondary), 0.6));
+    box-shadow: 0 4px 12px hsla(var(--accent-secondary), 0.3);
+}
+
+/* Settings button in general UI */
+.btn-settings {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: hsl(var(--text-muted));
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.btn-settings:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    transform: rotate(45deg);
+}
+
+/* Pulsing effect for blocked speech button */
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+        transform: scale(1);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+        transform: scale(1.04);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
+        transform: scale(1);
+    }
+}
+
+.pulse-highlight {
+    animation: pulse-highlight 1.5s infinite !important;
+    border-color: gold !important;
+    background: rgba(255, 215, 0, 0.15) !important;
 }

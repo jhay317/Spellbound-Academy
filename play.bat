@@ -1,4 +1,4 @@
 @echo off
 echo Starting Spellbound Academy...
-python server.py
+".\env-3-14\Scripts\python.exe" server.py
 pause

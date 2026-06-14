@@ -1,0 +1,18 @@
+{
+  "name": "Spellbound Academy",
+  "short_name": "Spellbound",
+  "description": "An interactive, voice-enabled spelling game designed to make learning words fun.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#b566ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -17,15 +17,36 @@ It manages score saving/retrieval and user progress tracking via JSON files.
 """
 
 PORT = int(os.environ.get("PORT", 8000))
+HOST = os.environ.get("HOST", "")
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-SCORES_FILE = os.path.join(DIRECTORY, "scores.json")
-USER_PROGRESS_FILE = os.path.join(DIRECTORY, "user_progress.json")
-SOUNDS_DIR = os.path.join(DIRECTORY, "sounds")
+DATA_DIR = os.environ.get("DATA_DIR", DIRECTORY)
+
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+SCORES_FILE = os.path.join(DATA_DIR, "scores.json")
+USER_PROGRESS_FILE = os.path.join(DATA_DIR, "user_progress.json")
+SOUNDS_DIR = os.path.join(DATA_DIR, "sounds")
 
 if not os.path.exists(SOUNDS_DIR):
     os.makedirs(SOUNDS_DIR)
 
-def robust_generate_tts(word, filepath, rate, voice="en-US-AriaNeural", retries=3):
+def sanitize_rate(rate_str):
+    """Sanitize the rate parameter to only contain digits, +, -, and %."""
+    if not rate_str:
+        return "+0%"
+    sanitized = "".join([c for c in str(rate_str) if c.isdigit() or c in ('+', '-', '%')]).strip()
+    return sanitized if sanitized else "+0%"
+
+def sanitize_voice(voice_str):
+    """Sanitize the voice parameter to only contain standard voice name characters."""
+    if not voice_str:
+        return "en-US-AnaNeural"
+    # Allow alphanumeric characters, dashes, and underscores
+    sanitized = "".join([c for c in str(voice_str) if c.isalnum() or c in ('-', '_')]).strip()
+    return sanitized if sanitized else "en-US-AnaNeural"
+
+def robust_generate_tts(word, filepath, rate, voice="en-US-AnaNeural", retries=3):
     """
     Generate TTS audio with multiple retry attempts and exponential backoff.
     Returns (success, error_message).
@@ -130,6 +151,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             query = self.path.split('?')
             word = ""
             rate = "+0%"  # Default rate for edge-tts
+            voice = "en-US-AnaNeural"  # Default clear voice
             
             if len(query) > 1:
                 params = query[1].split('&')
@@ -137,7 +159,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if p.startswith('word='):
                         word = urllib.parse.unquote(p.split('=')[1]).lower().strip()
                     elif p.startswith('rate='):
-                        rate = urllib.parse.unquote(p.split('=')[1])
+                        rate = sanitize_rate(urllib.parse.unquote(p.split('=')[1]))
+                    elif p.startswith('voice='):
+                        voice = sanitize_voice(urllib.parse.unquote(p.split('=')[1]))
             
             if not word:
                 print(f"[ERROR] /api/speak: Missing word parameter in request: {self.path}")
@@ -147,7 +171,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # Sanitize filename
             safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
             safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
-            filename = f"{safe_word}_{safe_rate}.mp3"
+            safe_voice = voice.replace('-', '_')
+            filename = f"{safe_word}_{safe_voice}_{safe_rate}.mp3"
             filepath = os.path.join(SOUNDS_DIR, filename)
 
             # File validation: Check if exists AND is not empty
@@ -163,8 +188,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         print(f"[ERROR] Failed to delete empty file {filepath}: {e}")
 
                 # Generate audio
-                print(f"[TTS] Generating neural audio for: '{word}' (Rate: {rate})")
-                success, error = robust_generate_tts(word, filepath, rate)
+                print(f"[TTS] Generating neural audio for: '{word}' (Voice: {voice}, Rate: {rate})")
+                success, error = robust_generate_tts(word, filepath, rate, voice)
                 
                 if not success:
                     print(f"[ERROR] TTS Generation Failed for '{word}': {error}")
@@ -285,14 +310,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 data = json.loads(post_data.decode('utf-8'))
                 words = data.get('words', [])
-                rate = data.get('rate', '+0%')
+                rate = sanitize_rate(data.get('rate', '+0%'))
+                voice = sanitize_voice(data.get('voice', 'en-US-AnaNeural'))
                 
                 def process_word(word):
-                    voice = "en-US-AriaNeural"
                     word = word.lower().strip()
                     safe_word = "".join([c for c in word if c.isalnum() or c in (' ', '-', '_')]).strip()
                     safe_rate = rate.replace('+', 'p').replace('-', 'm').replace('%', '')
-                    filename = f"{safe_word}_{safe_rate}.mp3"
+                    safe_voice = voice.replace('-', '_')
+                    filename = f"{safe_word}_{safe_voice}_{safe_rate}.mp3"
                     filepath = os.path.join(SOUNDS_DIR, filename)
 
                     # Check if exists AND is valid
@@ -304,7 +330,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                 pass
                             print(f"[REGEN] Batch deleting empty file: '{filename}'")
 
-                        print(f"[BATCH] Generating: '{word}'")
+                        print(f"[BATCH] Generating: '{word}' using {voice}")
                         success, error = robust_generate_tts(word, filepath, rate, voice)
                         
                         if success:
@@ -350,8 +376,8 @@ def run_server():
     os.chdir(DIRECTORY)
     ThreadedHTTPServer.allow_reuse_address = True
     
-    with ThreadedHTTPServer(("", PORT), Handler) as httpd:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Multi-threaded Server started at http://localhost:{PORT}")
+    with ThreadedHTTPServer((HOST, PORT), Handler) as httpd:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Multi-threaded Server started at http://{HOST or 'localhost'}:{PORT}")
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Serving from: {DIRECTORY}")
         
         # Only open browser if not in a headless/deployment environment

@@ -1,0 +1,14 @@
+.git
+.gitignore
+env-3-14/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+scores.json
+user_progress.json
+sounds/
+*.tmp
