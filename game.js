@@ -862,8 +862,9 @@ class Game {
         } else {
             this.showFeedback("Shield Hit!");
         }
+    }
 
-        // Dict    /**
+    /**
      * Speak a word using the server-side TTS endpoint.
      * Falls back to browser-built-in TTS if the server fails.
      * @param {string} word - The word to speak

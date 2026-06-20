@@ -299,11 +299,37 @@
     <script src="game.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registered successfully with scope:', reg.scope))
-                    .catch(err => console.error('Service Worker registration failed:', err));
-            });
+            const isLocalhost = window.location.hostname === 'localhost' || 
+                                window.location.hostname === '127.0.0.1' || 
+                                window.location.hostname === '[::1]';
+            
+            if (isLocalhost) {
+                // Automatically unregister service worker on localhost to avoid caching issues during development
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    let unregisteredAny = false;
+                    const unregisterPromises = registrations.map(registration => {
+                        return registration.unregister().then(success => {
+                            if (success) {
+                                console.log('[Service Worker] Unregistered active service worker from localhost');
+                                unregisteredAny = true;
+                            }
+                        });
+                    });
+                    
+                    Promise.all(unregisterPromises).then(() => {
+                        if (unregisteredAny) {
+                            // Reload the page to clear caches and let the browser try to connect directly
+                            window.location.reload();
+                        }
+                    });
+                });
+            } else {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => console.log('Service Worker registered successfully with scope:', reg.scope))
+                        .catch(err => console.error('Service Worker registration failed:', err));
+                });
+            }
         }
     </script>
 </body>

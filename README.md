@@ -13,7 +13,8 @@ Spellbound Academy is an interactive, voice-enabled spelling game designed to ma
 -   **Progression & Stats**: Tracks mastery across grades (3-5) and levels, with persistent storage for progress and high scores.
 -   **Zero-Latency Audio**: Proactive background multi-threaded pre-caching ensures audio is ready before you even see the word.
 -   **Virtual Touch Keyboard**: On-screen keyboard toggle supporting touch interaction on mobile devices and tablets.
--   **PWA Ready**: Offline support and standalone installation enabled via a registered Service Worker and Web Manifest.
+-   **PWA Ready**: Offline support and standalone installation enabled via a registered Service Worker and Web Manifest. When running on `localhost`, `127.0.0.1`, or `[::1]`, the service worker is automatically unregistered to avoid caching conflicts during development.
+
 
 ## 🚀 Setup & Usage
 
