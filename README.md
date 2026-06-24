@@ -12,7 +12,7 @@ Spellbound Academy is an interactive, voice-enabled spelling game designed to ma
 -   **Visual Excellence**: Modern glassmorphism UI, a state-of-the-art interactive particle system with subclass-themed behaviors (rising embers, falling crystals, lightning sparks), and real-time incorrect letter highlighting.
 -   **Progression & Stats**: Tracks mastery across grades (3-5) and levels, with persistent storage for progress and high scores.
 -   **Zero-Latency Audio**: Proactive background multi-threaded pre-caching ensures audio is ready before you even see the word.
--   **Virtual Touch Keyboard**: On-screen keyboard toggle supporting touch interaction on mobile devices and tablets.
+-   **Virtual Touch Keyboard**: On-screen keyboard toggle supporting touch interaction on mobile devices and tablets, now featuring key support for special/punctuation characters (apostrophe `'`, hyphen `-`, and period `.`) to handle complex spelling words.
 -   **PWA Ready**: Offline support and standalone installation enabled via a registered Service Worker and Web Manifest. When running on `localhost`, `127.0.0.1`, or `[::1]`, the service worker is automatically unregistered to avoid caching conflicts during development.
 
 

@@ -324,8 +324,8 @@ class Game {
         kb.innerHTML = '';
         const rows = [
             ['q','w','e','r','t','y','u','i','o','p'],
-            ['a','s','d','f','g','h','j','k','l'],
-            ['Backspace','z','x','c','v','b','n','m','Clr']
+            ['a','s','d','f','g','h','j','k','l', "'"],
+            ['Backspace','z','x','c','v','b','n','m', '-', '.', 'Clr']
         ];
         
         rows.forEach(rowKeys => {
@@ -729,7 +729,7 @@ class Game {
         const key = e.key;
 
         // Visual feedback on virtual keyboard if present
-        const virtualKey = document.querySelector(`.key-btn[data-key="${key.toLowerCase()}"]`);
+        const virtualKey = Array.from(document.querySelectorAll('.key-btn')).find(btn => btn.dataset.key === key.toLowerCase());
         if (virtualKey) {
             virtualKey.classList.add('active');
             setTimeout(() => virtualKey.classList.remove('active'), 100);
@@ -749,8 +749,8 @@ class Game {
             return;
         }
 
-        // Handle Letters (A-Z)
-        if (key.length === 1 && key.match(/[a-z]/i)) {
+        // Handle Letters (A-Z) and valid punctuation characters
+        if (key.length === 1 && (key.match(/[a-z]/i) || key === "'" || key === "-" || key === ".")) {
             this.synth.playClick();
             if (this.state.input.length < this.state.currentWord.length) {
                 this.state.input.push(key.toLowerCase());
